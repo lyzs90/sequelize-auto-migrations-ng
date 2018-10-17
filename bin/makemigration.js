@@ -36,6 +36,9 @@ const optionDefinitions = [
   {
     name: 'help', alias: 'h', type: Boolean, description: 'Show this message',
   },
+  {
+    name: 'migration-table-name', alias: 'm', type: String, description: 'Sequelize Migration Storage table name'
+  }
 ];
 
 const options = commandLineArgs(optionDefinitions);
@@ -48,6 +51,8 @@ if (options.help) {
   });
   process.exit(0);
 }
+
+options['migration-table-name-migrations'] = options['migration-table-name'] + '_migrations';
 
 const migrationsDir = path.join(process.env.PWD || process.cwd(), options['migrations-path'] || 'migrations');
 const modelsDir = path.join(process.env.PWD || process.cwd(), options['models-path'] || 'models');
@@ -73,7 +78,7 @@ const queryInterface = require(modelsDir).sequelize.getQueryInterface();
 const { models } = sequelize;
 
 // This is the table that sequelize uses
-queryInterface.createTable('SequelizeMeta', {
+queryInterface.createTable(options['migration-table-name'], {
   name: {
     type: Sequelize.STRING,
     allowNull: false,
@@ -81,7 +86,7 @@ queryInterface.createTable('SequelizeMeta', {
     primaryKey: true,
   },
 }).then(() => {
-  return queryInterface.createTable('SequelizeMetaMigrations', {
+  return queryInterface.createTable(options['migration-table-name-migrations'], {
     revision: {
       type: Sequelize.INTEGER,
       allowNull: false,
@@ -98,9 +103,9 @@ queryInterface.createTable('SequelizeMeta', {
     },
   }).then(() => {
   // We get the state at the last migration executed
-    return sequelize.query('SELECT name FROM SequelizeMeta ORDER BY name desc limit 1', { type: sequelize.QueryTypes.SELECT })
+    return sequelize.query('SELECT name FROM ' + options['migration-table-name'] + ' ORDER BY name desc limit 1', { type: sequelize.QueryTypes.SELECT })
       .then(([lastExecutedMigration]) => {
-        return sequelize.query(`SELECT state FROM SequelizeMetaMigrations where revision = '${lastExecutedMigration === undefined ? -1 : lastExecutedMigration.name.split('-')[0]}'`, { type: sequelize.QueryTypes.SELECT })
+        return sequelize.query(`SELECT state FROM ` + options['migration-table-name-migrations'] + ` where revision = '${lastExecutedMigration === undefined ? -1 : lastExecutedMigration.name.split('-')[0]}'`, { type: sequelize.QueryTypes.SELECT })
           .then(([lastMigration]) => {
             if (lastMigration !== undefined) previousState = lastMigration.state;
 
@@ -158,9 +163,9 @@ queryInterface.createTable('SequelizeMeta', {
                 state: JSON.stringify(currentState),
               }];
 
-              queryInterface.bulkDelete('SequelizeMetaMigrations', { revision: currentState.revision })
+              return queryInterface.bulkDelete(options['migration-table-name-migrations'], { revision: currentState.revision })
                 .then(() => {
-                  queryInterface.bulkInsert('SequelizeMetaMigrations', rows)
+                  return queryInterface.bulkInsert(options['migration-table-name-migrations'], rows)
                     .then(() => {
                       if (options.verbose) console.log('Updated state on DB.');
                       if (options.execute) {
