@@ -8,6 +8,7 @@ const migrate = require('../lib/migrate');
 
 const path = require('path');
 const _ = require('lodash');
+const fs = require('fs');
 
 const optionDefinitions = [
   {
@@ -52,10 +53,20 @@ if (options.help) {
   process.exit(0);
 }
 
+const rcFileResolved = path.resolve(process.cwd(), '.sequelizerc');
+const rcOptions = fs.existsSync(rcFileResolved) ? JSON.parse(JSON.stringify(require(rcFileResolved))) : {};
+
+options['models-path'] = options['models-path'] || rcOptions['models-path'] ||  '';
+options['migrations-path'] = options['migrations-path'] || rcOptions['migrations-path'] || '';
+
+const sequelizeConfig = fs.existsSync(rcOptions['config']) ? JSON.parse(JSON.stringify(require(rcOptions['config']))) : {};
+const sequelizeEnvConfig = sequelizeConfig[process.env.NODE_ENV || 'development'] || {};
+options['migration-table-name'] = options['migration-table-name'] || sequelizeEnvConfig['migrationStorageTableName'];
+
 options['migration-table-name-migrations'] = options['migration-table-name'] + '_migrations';
 
-const migrationsDir = path.join(process.env.PWD || process.cwd(), options['migrations-path'] || 'migrations');
-const modelsDir = path.join(process.env.PWD || process.cwd(), options['models-path'] || 'models');
+const migrationsDir = path.resolve(process.cwd(), options['migrations-path']); 
+const modelsDir = path.resolve(process.cwd(), options['models-path']);  
 
 // current state
 const currentState = {
