@@ -198,7 +198,7 @@ queryInterface
             `New migration to revision ${currentState.revision} has been saved to file '${
               info.filename
             }'`
-          );xw
+          );
 
           fs.writeFileSync(path.join(migrationsDir, '_current.json'), JSON.stringify(currentState, null, 4) );
 
