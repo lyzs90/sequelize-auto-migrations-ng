@@ -119,11 +119,12 @@ let previousState = {
   tables: {}
 };
 
-const { sequelize } = require(modelsDir); /* eslint import/no-dynamic-require: off */
+const exportedModels = require(modelsDir); /* eslint import/no-dynamic-require: off */
+const sequelize = exportedModels.sequelize || exportedModels.default.sequelize;
 
 if (!options.debug) sequelize.options.logging = false;
 
-const queryInterface = require(modelsDir).sequelize.getQueryInterface();
+const queryInterface = sequelize.getQueryInterface();
 const { models } = sequelize;
 
 // This is the table that sequelize uses
